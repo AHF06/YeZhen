@@ -1,0 +1,137 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "病虫害识别助手",
+        "navigationBarBackgroundColor": "#2c5e2a",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/community/community",
+      "style": {
+        "navigationBarTitleText": "农友圈",
+        "navigationBarBackgroundColor": "#2c5e2a",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/history/history",
+      "style": {
+        "navigationBarTitleText": "植保档案",
+        "navigationBarBackgroundColor": "#2c5e2a",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/mine/mine",
+      "style": {
+        "navigationBarTitleText": "我的",
+        "navigationBarBackgroundColor": "#2c5e2a",
+        "navigationBarTextStyle": "white"
+      }
+    }
+  ],
+  "subPackages": [
+    {
+      "root": "subpages",
+      "pages": [
+        {
+          "path": "login/login",
+          "style": {
+            "navigationBarTitleText": "登录",
+            "navigationStyle": "custom",
+            "navigationBarBackgroundColor": "#2c5e2a",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "register/register",
+          "style": {
+            "navigationBarTitleText": "注册",
+            "navigationStyle": "custom",
+            "navigationBarBackgroundColor": "#2c5e2a",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "myposts/myposts",
+          "style": {
+            "navigationBarTitleText": "我的动态",
+            "navigationBarBackgroundColor": "#2c5e2a",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "result/result",
+          "style": {
+            "navigationBarTitleText": "识别结果",
+            "navigationStyle": "custom",
+            "navigationBarBackgroundColor": "#2c5e2a",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "ai/ai",
+          "style": {
+            "navigationBarTitleText": "AI助手",
+            "navigationStyle": "custom",
+            "navigationBarBackgroundColor": "#2c5e2a",
+            "navigationBarTextStyle": "white"
+          }
+        },
+        {
+          "path": "warning/warning",
+          "style": {
+            "navigationBarTitleText": "宏观预警",
+            "navigationStyle": "custom",
+            "navigationBarBackgroundColor": "#2c5e2a",
+            "navigationBarTextStyle": "white"
+          }
+        }
+      ]
+    }
+  ],
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "all",
+      "packages": ["subpages"]
+    },
+    "pages/community/community": {
+      "network": "all",
+      "packages": ["subpages"]
+    }
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "病虫害识别助手",
+    "navigationBarBackgroundColor": "#2c5e2a",
+    "backgroundColor": "#f5f9ef"
+  },
+  "tabBar": {
+    "color": "#8a9a7a",
+    "selectedColor": "#2c5e2a",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/community/community",
+        "text": "农友圈"
+      },
+      {
+        "pagePath": "pages/history/history",
+        "text": "植保档案"
+      },
+      {
+        "pagePath": "pages/mine/mine",
+        "text": "我的"
+      }
+    ]
+  },
+  "uniIdRouter": {}
+}
