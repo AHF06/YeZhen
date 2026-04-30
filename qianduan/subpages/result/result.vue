@@ -23,7 +23,7 @@
         <text class="advice-title">🌱 AI防治建议</text>
         <text v-if="!advice && !loadingAdvice" class="advice-placeholder">点击下方按钮生成防治建议</text>
         <text v-if="loadingAdvice" class="advice-loading">正在生成建议，请稍候...</text>
-        <text v-if="advice" class="advice-content">{{ advice }}</text>
+        <text v-if="advice" class="advice-content">{{ formatAdvice(advice) }}</text>
       </view>
 
       <!-- 生成建议按钮（仅在无建议且未生成时显示） -->
@@ -65,6 +65,20 @@ export default {
     }
   },
   methods: {
+	formatAdvice(text) {
+	    if (!text) return ''
+	    // 1. 去掉加粗 **text** -> text
+	    let formatted = text.replace(/\*\*(.*?)\*\*/g, '$1')
+	    // 2. 去掉斜体或列表 *text* -> text
+	    formatted = formatted.replace(/\*([^\*]+?)\*/g, '$1')
+	    // 3. 把行首的 * 或 - 列表符号换成 •（圆点），也可以直接删掉
+	    formatted = formatted.replace(/^(\s*)[\*\-]\s+/gm, '$1• ')
+	    // 4. 去掉连续星号或减号分隔线
+	    formatted = formatted.replace(/[\*\-]{3,}/g, '')
+	    // 5. 处理列表项内的星号（如果有残留）
+	    formatted = formatted.replace(/\*/g, '')
+	    return formatted
+	},
     async loadRecord(id) {
       try {
         const userId = request.getUserId()

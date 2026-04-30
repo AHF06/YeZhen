@@ -10,7 +10,7 @@
       <view class="logo-icon">
         <text class="logo-emoji">🌾</text>
       </view>
-      <text class="app-name">叶问</text>
+      <text class="app-name">叶诊</text>
       <text class="app-slogan">智慧农业 · 精准防控</text>
     </view>
 

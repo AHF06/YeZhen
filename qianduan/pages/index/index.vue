@@ -166,6 +166,12 @@ export default {
     this.calcScrollHeight()
     this.getLocationAndWeather()
     this.loadRecentRecords()
+	uni.$on('refreshRecords', () => {
+	    this.loadRecentRecords()
+	  })
+	},
+	onUnload() {
+	  uni.$off('refreshRecords')
   },
   
   onShow() {
@@ -177,17 +183,17 @@ export default {
   
   methods: {
     checkLoginStatus() {
+      // 统一使用 'userInfo' 这个 key
+      const userInfo = uni.getStorageSync('userInfo')
       const isLogin = uni.getStorageSync('is_login')
-      const userInfo = uni.getStorageSync('user_info')
-      //if (!isLogin || !userInfo) {
-       // setTimeout(() => {
-        //  uni.navigateTo({ url: '/subpages/login/login' })
-       // }, 100)
-      //}
-	  if (!userInfo) {
-	      uni.setStorageSync('userInfo', { user_id: 1, nickname: '测试用户' })
-	      uni.setStorageSync('is_login', true)
-	    }
+      
+      // 未登录：跳转登录页（放开注释）
+      if (!isLogin || !userInfo) {
+        setTimeout(() => {
+          uni.navigateTo({ url: '/subpages/login/login' })
+        }, 100)
+        return
+      }
     },
     
     // ========== 天气相关（调用后端API） ==========
@@ -399,7 +405,7 @@ export default {
             uni.navigateTo({
               url: `/subpages/result/result?id=${result.record_id}`
             })
-            
+            uni.$emit('refreshRecords')
             // 刷新最近记录
             this.loadRecentRecords()
             
@@ -814,13 +820,14 @@ export default {
   transform: scale(0.92);
 }
 
+/* 全屏天气弹窗 - 优化间距 */
 .weather-modal {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -828,112 +835,154 @@ export default {
 }
 
 .weather-modal-content {
-  width: 85%;
-  max-height: 80vh;
+  width: 100%;
+  height: 100%;
   background: white;
-  border-radius: 28px;
+  border-radius: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
+  padding: 20px 24px;
   border-bottom: 1px solid #f0f0e8;
+  background: white;
+  flex-shrink: 0;
 }
 
 .modal-title {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: bold;
   color: #2c5e2a;
 }
 
 .modal-close {
-  font-size: 24px;
+  font-size: 28px;
   color: #999;
+  padding: 8px;
 }
 
 .modal-body {
   flex: 1;
-  padding: 20px;
+  padding: 24px 20px 32px;
   overflow-y: auto;
 }
 
-.modal-footer {
-  padding: 16px;
-  border-top: 1px solid #f0f0e8;
-}
-
-.refresh-btn {
-  padding: 12px;
-  text-align: center;
-  background: #2c5e2a;
-  color: white;
-  border-radius: 40px;
-  font-weight: 600;
-}
-
+/* 🌟 主天气区域 - 增加呼吸空间 */
 .weather-main {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20px;
-  margin-bottom: 24px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #f0f0e8;
+  gap: 30px;
+  margin-bottom: 48px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid #ecf0e6;
+  flex-wrap: wrap;
 }
 
 .weather-main-icon {
-  font-size: 60px;
+  font-size: 80px;
 }
 
 .weather-main-temp {
-  font-size: 32px;
+  font-size: 48px;
   font-weight: bold;
-  color: #333;
+  color: #2c5e2a;
 }
 
 .weather-main-desc {
-  font-size: 14px;
+  font-size: 18px;
   color: #666;
+  margin-top: 8px;
+  text-align: center;
 }
 
+/* 🌟 详情列表 - 更宽松的布局 */
 .weather-detail-list {
-  margin-bottom: 20px;
+  margin-bottom: 32px;
 }
 
 .detail-item {
   display: flex;
-  justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid #f5f5f0;
+  justify-content: flex-start;  // 改为左对齐
+  align-items: baseline;
+  padding: 16px 0;
+  border-bottom: 1px solid #f0f0e8;
+  // 删除 gap
 }
 
 .detail-label {
-  font-size: 14px;
-  color: #666;
+  min-width: 80px;   // 保证标签宽度一致
+  flex-shrink: 0;    // 防止被压缩
 }
 
 .detail-value {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
+  margin-left: 160px; // 想间隔多少就调这里
+  //flex: 1;           // 让数值占据剩余空间，自动靠右（可选）
+  //text-align: right; // 数值右对齐
 }
 
+/* 🌟 天气建议卡片 */
 .weather-tip {
   display: flex;
-  gap: 8px;
-  background: #e8f5e9;
-  padding: 12px;
-  border-radius: 16px;
+  gap: 14px;
+  background: #eef3e9;
+  padding: 20px;
+  border-radius: 24px;
+  margin: 24px 0 16px;
+}
+
+.tip-icon {
+  font-size: 24px;
 }
 
 .tip-text {
   flex: 1;
-  font-size: 13px;
+  font-size: 15px;
   color: #2c5e2a;
-  line-height: 1.4;
+  line-height: 1.5;
+}
+
+/* 🌟 底部刷新按钮 */
+.modal-footer {
+  padding: 20px 24px 32px;
+  border-top: 1px solid #f0f0e8;
+  background: white;
+  flex-shrink: 0;
+}
+
+.refresh-btn {
+  padding: 16px;
+  text-align: center;
+  background: #2c5e2a;
+  color: white;
+  border-radius: 48px;
+  font-weight: 600;
+  font-size: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* 小屏幕微调 */
+@media (max-width: 375px) {
+  .modal-body {
+    padding: 20px 16px 28px;
+  }
+  .detail-label {
+    font-size: 15px;
+    min-width: 70px;
+  }
+  .detail-value {
+    font-size: 15px;
+  }
+  .weather-main-temp {
+    font-size: 40px;
+  }
+  .weather-main-icon {
+    font-size: 64px;
+  }
 }
 </style>

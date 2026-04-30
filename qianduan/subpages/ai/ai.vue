@@ -28,7 +28,7 @@
       @scrolltoupper="loadMoreHistory"
     >
       <view v-if="messages.length === 0" class="welcome-message">
-        <image class="welcome-image" src="/static/ai.jpg" mode="aspectFill"></image>
+        <image class="welcome-image" src="/subpages/static/ai.jpg" mode="aspectFill"></image>
         <text class="welcome-title">您好，农场主！</text>
         <text class="welcome-desc">我是您的专属AI农技助手「农小智」</text>
         <text class="welcome-tip">我可以帮您：</text>
@@ -49,13 +49,13 @@
         :class="msg.role"
       >
         <view v-if="msg.role === 'assistant'" class="message-avatar">
-          <image class="avatar-image" src="/static/ai.jpg" mode="aspectFill"></image>
+          <image class="avatar-image" src="/subpages/static/ai.jpg" mode="aspectFill"></image>
         </view>
         <view class="message-bubble" :class="msg.role">
           <text v-if="msg.isTyping" class="typing-indicator">
             <span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
           </text>
-          <text v-else class="message-text">{{ msg.content }}</text>
+          <text v-else class="message-text">{{ formatMessage(msg.content) }}</text>
         </view>
         <view v-if="msg.role === 'user'" class="message-avatar user-avatar">
           <image class="avatar-image" src="https://picsum.photos/id/64/100/100" mode="aspectFill"></image>
@@ -64,7 +64,7 @@
 
       <view v-if="isLoading" class="message-row assistant">
         <view class="message-avatar">
-          <image class="avatar-image" src="/static/ai.jpg" mode="aspectFill"></image>
+          <image class="avatar-image" src="/subpages/static/ai.jpg" mode="aspectFill"></image>
         </view>
         <view class="message-bubble assistant loading-bubble">
           <text class="loading-text">正在思考...</text>
@@ -136,23 +136,14 @@ import request from '@/utils/request.js'
 export default {
   data() {
     return {
-      // 消息列表
       messages: [],
       inputText: '',
       isLoading: false,
       scrollToView: '',
-      
-      // 会话ID
       sessionId: '',
-      
-      // 历史记录
       hasMoreHistory: false,
       historyPage: 1,
-      
-      // UI状态
       showMenuModal: false,
-      
-      // 快捷回复
       quickReplies: []
     }
   },
@@ -164,14 +155,24 @@ export default {
   },
   
   methods: {
-    // ========== 初始化（使用用户ID隔离） ==========
+    // ========== 格式化消息，去除Markdown ==========
+    formatMessage(text) {
+      if (!text) return ''
+      // 1. 移除加粗 **text**
+      let formatted = text.replace(/\*\*(.*?)\*\*/g, '$1')
+      // 2. 移除斜体或列表标记 *text*（成对出现）
+      formatted = formatted.replace(/\*([^\*]+?)\*/g, '$1')
+      // 3. 将行首的 * 或 - 列表标记替换为圆点
+      formatted = formatted.replace(/^(\s*)[\*\-]\s+/gm, '$1• ')
+      // 4. 移除连续星号或减号分隔线
+      formatted = formatted.replace(/[\*\-]{3,}/g, '')
+      return formatted
+    },
+    
     initSession() {
-      // 获取当前登录用户ID
       const userId = request.getUserId()
-      
       if (!userId || userId === 0) {
         console.log('用户未登录，使用临时会话')
-        // 未登录时使用设备标识
         let sessionId = uni.getStorageSync('temp_session_id')
         if (!sessionId) {
           sessionId = 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
@@ -179,7 +180,6 @@ export default {
         }
         this.sessionId = sessionId
       } else {
-        // 已登录：使用用户ID作为会话标识的一部分
         let sessionId = uni.getStorageSync(`chat_session_${userId}`)
         if (!sessionId) {
           sessionId = `session_${userId}_${Date.now()}`
@@ -190,34 +190,25 @@ export default {
       }
     },
     
-    // ========== 加载该用户的聊天历史 ==========
     loadHistory() {
       const userId = request.getUserId()
       let savedHistory = []
-      
       if (userId && userId !== 0) {
-        // 已登录：加载用户专属历史
         savedHistory = uni.getStorageSync(`ai_chat_history_${userId}`)
       } else {
-        // 未登录：加载临时历史
         savedHistory = uni.getStorageSync('ai_chat_history_temp')
       }
-      
       if (savedHistory && savedHistory.length > 0) {
         this.messages = savedHistory
       }
     },
     
-    // ========== 保存该用户的聊天历史 ==========
     saveHistory() {
       const userId = request.getUserId()
       const toSave = this.messages.slice(-50)
-      
       if (userId && userId !== 0) {
-        // 已登录：保存到用户专属存储
         uni.setStorageSync(`ai_chat_history_${userId}`, toSave)
       } else {
-        // 未登录：保存到临时存储
         uni.setStorageSync('ai_chat_history_temp', toSave)
       }
     },
@@ -235,42 +226,26 @@ export default {
       }
     },
     
-    // ========== 发送消息（带上用户ID） ==========
     async sendMessage() {
       const text = this.inputText.trim()
       if (!text) return
-      
       this.addMessage('user', text)
       this.inputText = ''
       this.scrollToBottom()
-      
       this.isLoading = true
-      
       try {
         const userId = request.getUserId()
-        const data = {
-          session_id: this.sessionId,
-          message: text
-        }
-        
-        // 如果已登录，带上用户ID
-        if (userId && userId !== 0) {
-          data.user_id = userId
-        }
-        
+        const data = { session_id: this.sessionId, message: text }
+        if (userId && userId !== 0) data.user_id = userId
         const result = await request.request({
           url: '/api/chat/send',
           method: 'POST',
           data: data
         })
-        
         this.addMessage('assistant', result.reply)
         this.saveHistory()
         this.scrollToBottom()
-        
-        // 生成快捷回复建议
         this.generateQuickReplies(result.reply)
-        
       } catch (err) {
         console.error('AI请求失败', err)
         this.addMessage('assistant', '抱歉，AI服务暂时不可用，请稍后再试。🌾')
@@ -303,7 +278,6 @@ export default {
       } else {
         this.loadQuickQuestions()
       }
-      
       setTimeout(() => {
         if (this.quickReplies.length > 0 && this.quickReplies.length <= 4) {
           this.loadQuickQuestions()
@@ -329,7 +303,6 @@ export default {
           const tempFilePath = res.tempFilePaths[0]
           this.addMessage('user', '[图片]')
           this.isLoading = true
-          
           setTimeout(() => {
             this.addMessage('assistant', '收到您的图片！📸\n\n要识别病虫害，建议您返回首页点击「拍照识别病害」按钮，上传照片即可获得AI诊断结果。\n\n您也可以描述一下具体症状，我来帮您初步分析。')
             this.isLoading = false
@@ -340,13 +313,9 @@ export default {
     },
     
     showVoiceInput() {
-      uni.showToast({
-        title: '语音功能开发中',
-        icon: 'none'
-      })
+      uni.showToast({ title: '语音功能开发中', icon: 'none' })
     },
     
-    // ========== 清空该用户的对话历史 ==========
     async clearHistory() {
       uni.showModal({
         title: '清空对话',
@@ -354,13 +323,9 @@ export default {
         success: async (res) => {
           if (res.confirm) {
             const userId = request.getUserId()
-            
-            // 调用后端清空会话
             try {
               const data = { session_id: this.sessionId }
-              if (userId && userId !== 0) {
-                data.user_id = userId
-              }
+              if (userId && userId !== 0) data.user_id = userId
               await request.request({
                 url: '/api/chat/clear',
                 method: 'POST',
@@ -369,7 +334,6 @@ export default {
             } catch (err) {
               console.error('清空会话失败', err)
             }
-            
             this.messages = []
             this.saveHistory()
             this.showMenuModal = false
@@ -380,17 +344,12 @@ export default {
     },
     
     shareChat() {
-      uni.showToast({
-        title: '分享功能开发中',
-        icon: 'none'
-      })
+      uni.showToast({ title: '分享功能开发中', icon: 'none' })
     },
     
     goToFeedback() {
       this.showMenuModal = false
-      uni.switchTab({
-        url: '/pages/mine/mine'
-      })
+      uni.switchTab({ url: '/pages/mine/mine' })
       setTimeout(() => {
         uni.showToast({ title: '请在「我的-意见反馈」中提交', icon: 'none' })
       }, 500)
@@ -424,7 +383,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-/* 你的原有样式保持不变 */
 .ai-chat-page {
   width: 100%;
   height: 100vh;
@@ -608,6 +566,8 @@ export default {
 .message-text {
   word-break: break-all;
   white-space: pre-wrap;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 /* 打字动画 */

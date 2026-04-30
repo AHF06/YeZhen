@@ -376,14 +376,30 @@ export default {
   
   onLoad() {
     this.calcListHeight()
-    this.loadRecords()
+    // 监听新增记录事件
+    uni.$on('refreshRecords', () => {
+      console.log('收到刷新事件，刷新历史记录')
+      this.refreshList()
+    })
   },
   
   onShow() {
-    this.loadRecords()
+    console.log('历史页面 onShow，刷新列表')
+    this.refreshList()
+  },
+  
+  onUnload() {
+    uni.$off('refreshRecords')
   },
   
   methods: {
+    // 统一刷新方法：重置分页并重新加载
+    refreshList() {
+      this.page = 1
+      this.hasMore = true
+      this.loadRecords(false)
+    },
+    
     calcListHeight() {
       const systemInfo = uni.getSystemInfoSync()
       this.listHeight = systemInfo.windowHeight - 280
@@ -392,6 +408,7 @@ export default {
     // ========== 从后端加载数据（只加载当前用户的） ==========
     async loadRecords(isLoadMore = false) {
       if (this.loading) return
+      
       if (!isLoadMore) {
         this.page = 1
         this.hasMore = true
@@ -402,6 +419,7 @@ export default {
       try {
         // 获取当前登录用户的ID
         const userId = request.getUserId()
+        console.log('加载历史记录，userId:', userId)
         
         // 如果用户未登录，跳转到登录页
         if (!userId || userId === 0) {
@@ -418,12 +436,14 @@ export default {
         const result = await request.request({
           url: '/api/history/list',
           data: {
-            user_id: userId,  // 只查询当前用户的记录
+            user_id: userId,
             page: this.page,
             page_size: this.pageSize
           },
           showLoading: !isLoadMore
         })
+        
+        console.log('历史记录返回:', result)
         
         const items = result.items || []
         const formattedItems = items.map(item => this.formatRecord(item))
@@ -450,6 +470,16 @@ export default {
     },
     
     formatRecord(item) {
+      // 修正图片URL（如果有多余的 /static/static/）
+      let fixedAnnotatedUrl = item.annotated_image_url
+      if (fixedAnnotatedUrl && fixedAnnotatedUrl.includes('/static/static/')) {
+        fixedAnnotatedUrl = fixedAnnotatedUrl.replace('/static/static/', '/static/')
+      }
+      let fixedImageUrl = item.image_url
+      if (fixedImageUrl && fixedImageUrl.includes('/static/static/')) {
+        fixedImageUrl = fixedImageUrl.replace('/static/static/', '/static/')
+      }
+      
       return {
         id: item.id,
         disease_name: item.disease_name,
@@ -460,8 +490,8 @@ export default {
         diagnosisDate: item.created_at,
         confidence: item.confidence,
         status: this.getStatusFromStorage(item.id) || '待防治',
-        image_url: item.image_url,
-        annotated_image_url: item.annotated_image_url,
+        image_url: fixedImageUrl,
+        annotated_image_url: fixedAnnotatedUrl,
         weather_info: item.weather_info,
         ai_advice: item.ai_advice
       }
@@ -532,25 +562,21 @@ export default {
           if (res.confirm) {
             try {
               const userId = request.getUserId()
+              console.log('删除记录，userId:', userId, 'recordId:', item.id)
               
-              // 方式1：通过 query 参数传递
-              const result = await request.request({
+              await request.request({
                 url: `/api/history/delete/${item.id}`,
                 method: 'DELETE',
-                data: { user_id: userId }  // 放在 body 中
+                data: { user_id: userId }
               })
               
-              // 从列表中移除
-              const index = this.allRecords.findIndex(r => r.id === item.id)
-              if (index !== -1) {
-                this.allRecords.splice(index, 1)
-              }
-              
+              // 删除成功后刷新整个列表
+              this.refreshList()
               uni.showToast({ title: '删除成功', icon: 'success' })
               
             } catch (err) {
               console.error('删除失败', err)
-              uni.showToast({ title: '删除失败', icon: 'error' })
+              uni.showToast({ title: err.message || '删除失败', icon: 'error' })
             }
           }
         }
@@ -658,7 +684,7 @@ export default {
       const diseaseCountMap = new Map()
       records.forEach(record => {
         const disease = record.disease_name || record.diseaseName
-        if (disease) {
+        if (disease && disease !== '未检测到病害') {
           diseaseCountMap.set(disease, (diseaseCountMap.get(disease) || 0) + 1)
         }
       })
@@ -696,7 +722,7 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-/* 你的原有样式保持不变 */
+/* 你的原有样式保持不变，这里完整保留 */
 .history-page {
   min-height: 100vh;
   background: #f5f7f0;
