@@ -140,6 +140,17 @@ const uploadFile = (options) => {
   })
 }
 
+// ========== 图片 URL 拼接 ==========
+const getImageUrl = (path) => {
+  if (!path) return ''
+  // 如果已经是完整 URL（http/https 开头），直接返回
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path
+  }
+  // 否则拼接 baseUrl
+  return config.baseUrl + path
+}
+
 // ========== 导出 ==========
 export default {
   request,
@@ -148,5 +159,6 @@ export default {
   getToken,
   setUserInfo,
   clearUserInfo,
+  getImageUrl,
   config
 }

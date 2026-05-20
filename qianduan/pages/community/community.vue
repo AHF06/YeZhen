@@ -288,22 +288,23 @@ export default {
             } else if (Array.isArray(item.images)) {
               images = item.images
             }
-            // 已经是完整URL，不需要处理
           } catch (e) {
             images = []
           }
         }
-      
+        // 转换图片 URL 为完整路径
+        images = images.map(img => request.getImageUrl(img))
+
       return {
         id: item.id,
         user_id: item.user_id,
         username: item.username,
-        avatar: item.avatar,
+        avatar: request.getImageUrl(item.avatar),
         type: item.type,
         content: item.content,
         crop_type: item.crop_type,
         disease_name: item.disease_name,
-        images: images,  // 修复后的图片URL
+        images: images,
         like_count: item.like_count || 0,
         comment_count: item.comment_count || 0,
         is_liked: item.is_liked || false,

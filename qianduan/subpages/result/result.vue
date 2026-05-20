@@ -67,16 +67,18 @@ export default {
   methods: {
 	formatAdvice(text) {
 	    if (!text) return ''
-	    // 1. 去掉加粗 **text** -> text
-	    let formatted = text.replace(/\*\*(.*?)\*\*/g, '$1')
-	    // 2. 去掉斜体或列表 *text* -> text
+	    // 1. 去掉标题 # 符号
+	    let formatted = text.replace(/^#{1,6}\s+/gm, '')
+	    // 2. 去掉加粗 **text** -> text
+	    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '$1')
+	    // 3. 去掉斜体或列表 *text* -> text
 	    formatted = formatted.replace(/\*([^\*]+?)\*/g, '$1')
-	    // 3. 把行首的 * 或 - 列表符号换成 •（圆点），也可以直接删掉
+	    // 4. 把行首的 * 或 - 列表符号换成 •
 	    formatted = formatted.replace(/^(\s*)[\*\-]\s+/gm, '$1• ')
-	    // 4. 去掉连续星号或减号分隔线
+	    // 5. 去掉连续星号或减号分隔线
 	    formatted = formatted.replace(/[\*\-]{3,}/g, '')
-	    // 5. 处理列表项内的星号（如果有残留）
-	    formatted = formatted.replace(/\*/g, '')
+	    // 6. 去掉残留的 # 和 *
+	    formatted = formatted.replace(/#/g, '').replace(/\*/g, '')
 	    return formatted
 	},
     async loadRecord(id) {
@@ -86,6 +88,8 @@ export default {
           url: `/api/history/detail/${id}`,
           data: { user_id: userId }
         })
+        result.image_url = request.getImageUrl(result.image_url)
+        result.annotated_image_url = request.getImageUrl(result.annotated_image_url)
         this.record = result
         // 如果记录自带 AI 建议，直接显示
         if (result.ai_advice) {

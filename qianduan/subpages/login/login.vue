@@ -215,17 +215,17 @@ export default {
         uni.showToast({ title: '请先同意用户协议', icon: 'none' })
         return
       }
-      
+
       this.isLogining = true
       uni.showLoading({ title: '登录中...', mask: true })
-      
+
       try {
         const result = await request.request({
           url: '/api/auth/login',
           method: 'POST',
           data: {
-            phone: this.loginForm.phone,
-            password: this.loginForm.password
+            phone: this.loginForm.phone.trim(),
+            password: this.loginForm.password.trim()
           }
         })
         console.log('登录返回:', result)

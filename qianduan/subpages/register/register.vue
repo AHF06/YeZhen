@@ -130,21 +130,11 @@ export default {
           }
         })
         
-        // 注册成功后自动登录
-        request.setUserInfo({
-          user_id: result.user_id,
-          username: result.username,
-          nickname: result.nickname,
-          phone: result.phone,
-          avatar: result.avatar,
-          token: result.token
-        })
-        
         uni.hideLoading()
-        uni.showToast({ title: '注册成功', icon: 'success' })
-        
+        uni.showToast({ title: '注册成功，请登录', icon: 'success' })
+
         setTimeout(() => {
-          uni.switchTab({ url: '/pages/index/index' })
+          uni.navigateBack()
         }, 1500)
         
       } catch (err) {

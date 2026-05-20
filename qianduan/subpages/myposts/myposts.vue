@@ -31,7 +31,7 @@
         </view>
         
         <view class="post-stats">
-          <text>❤️ {{ post.like_count || 0 }}</text>
+          <text>{{ post.is_liked ? '❤️' : '🤍' }} {{ post.like_count || 0 }}</text>
           <text>💬 {{ post.comment_count || 0 }}</text>
         </view>
       </view>
@@ -67,18 +67,24 @@ export default {
     async loadMyPosts() {
       try {
         const userId = request.getUserId()  // 获取当前用户ID
-        
+
         const result = await request.request({
           url: '/api/social/posts',
-          data: { 
+          data: {
             user_id: userId,  // 只查询当前用户的帖子
-            page: 1, 
-            page_size: 50 
+            current_user: userId,  // 传当前用户ID以判断是否已点赞
+            page: 1,
+            page_size: 50
           }
         })
-        
-        this.posts = result.items || []
-        
+
+        this.posts = (result.items || []).map(item => ({
+          ...item,
+          is_liked: item.is_liked || false,
+          avatar: request.getImageUrl(item.avatar),
+          images: (item.images || []).map(img => request.getImageUrl(img))
+        }))
+
       } catch (err) {
         console.error('加载我的动态失败', err)
       }

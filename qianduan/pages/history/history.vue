@@ -21,16 +21,15 @@
     <!-- 搜索筛选栏 -->
     <view class="search-bar">
       <view class="search-input-area">
-        <text class="search-icon">🔍</text>
-        <input 
-          v-model="searchKeyword" 
-          class="search-input" 
+        <input
+          v-model="searchKeyword"
+          class="search-input"
           placeholder="搜索病害名、作物名..."
           @confirm="handleSearch"
         />
       </view>
-      <view class="filter-btn" @click="showFilterDrawer = true">
-        <text class="filter-icon">⚙️</text>
+      <view class="search-btn" @click="handleSearch">
+        <text class="search-icon">🔍</text>
       </view>
     </view>
 
@@ -94,7 +93,7 @@
                 {{ item.status || '待防治' }}
               </view>
             </view>
-            <view class="crop-name">🌾 {{ item.crop_type || item.cropName }}</view>
+            <view class="crop-name">🌾 {{ item.cropName || item.crop_type }}</view>
             <view class="date-weather">
               <text class="date">📅 {{ item.created_at || item.diagnosisDate }}</text>
               <text class="weather">☀️ {{ getWeatherIcon(item.weather_info) }}</text>
@@ -330,9 +329,11 @@ export default {
     filteredRecords() {
       let records = [...this.allRecords]
       if (this.searchKeyword) {
-        records = records.filter(r => 
-          (r.disease_name || r.diseaseName || '').includes(this.searchKeyword) || 
-          (r.crop_type || r.cropName || '').includes(this.searchKeyword)
+        const kw = this.searchKeyword
+        records = records.filter(r =>
+          (r.disease_name || r.diseaseName || '').includes(kw) ||
+          (r.crop_type || '').includes(kw) ||
+          (r.cropName || '').includes(kw)
         )
       }
       if (this.activeFilter !== 'all') {
@@ -470,16 +471,6 @@ export default {
     },
     
     formatRecord(item) {
-      // 修正图片URL（如果有多余的 /static/static/）
-      let fixedAnnotatedUrl = item.annotated_image_url
-      if (fixedAnnotatedUrl && fixedAnnotatedUrl.includes('/static/static/')) {
-        fixedAnnotatedUrl = fixedAnnotatedUrl.replace('/static/static/', '/static/')
-      }
-      let fixedImageUrl = item.image_url
-      if (fixedImageUrl && fixedImageUrl.includes('/static/static/')) {
-        fixedImageUrl = fixedImageUrl.replace('/static/static/', '/static/')
-      }
-      
       return {
         id: item.id,
         disease_name: item.disease_name,
@@ -490,8 +481,8 @@ export default {
         diagnosisDate: item.created_at,
         confidence: item.confidence,
         status: this.getStatusFromStorage(item.id) || '待防治',
-        image_url: fixedImageUrl,
-        annotated_image_url: fixedAnnotatedUrl,
+        image_url: request.getImageUrl(item.image_url),
+        annotated_image_url: request.getImageUrl(item.annotated_image_url),
         weather_info: item.weather_info,
         ai_advice: item.ai_advice
       }
@@ -605,7 +596,17 @@ export default {
     },
     
     handleSearch() {
-      // 搜索已在computed中处理
+      // 收起键盘
+      uni.hideKeyboard()
+      // 过滤已在 computed 中处理，此处提供反馈
+      if (this.searchKeyword.trim()) {
+        const count = this.filteredRecords.length
+        if (count > 0) {
+          uni.showToast({ title: `找到 ${count} 条记录`, icon: 'success', duration: 1500 })
+        } else {
+          uni.showToast({ title: '未找到匹配记录', icon: 'none', duration: 1500 })
+        }
+      }
     },
     
     resetFilters() {
@@ -762,13 +763,11 @@ export default {
   background: white;
   border-radius: 40px;
   padding: 10px 16px;
-  gap: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  .search-icon { font-size: 18px; }
   .search-input { flex: 1; font-size: 14px; }
 }
 
-.filter-btn {
+.search-btn {
   width: 44px;
   height: 44px;
   background: white;
@@ -777,6 +776,7 @@ export default {
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  .search-icon { font-size: 18px; }
 }
 
 .filter-tags {

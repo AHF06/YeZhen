@@ -90,8 +90,8 @@
         <view class="input-icon" @click="showImagePicker">
           <text>📷</text>
         </view>
-        <view class="input-icon" @click="showVoiceInput">
-          <text>🎤</text>
+        <view class="input-icon" @click="clearHistory">
+          <text>🗑️</text>
         </view>
       </view>
       <view class="input-container">
@@ -158,14 +158,18 @@ export default {
     // ========== 格式化消息，去除Markdown ==========
     formatMessage(text) {
       if (!text) return ''
-      // 1. 移除加粗 **text**
-      let formatted = text.replace(/\*\*(.*?)\*\*/g, '$1')
-      // 2. 移除斜体或列表标记 *text*（成对出现）
+      // 1. 去除标题 # 符号
+      let formatted = text.replace(/^#{1,6}\s+/gm, '')
+      // 2. 移除加粗 **text**
+      formatted = formatted.replace(/\*\*(.*?)\*\*/g, '$1')
+      // 3. 移除斜体或列表标记 *text*
       formatted = formatted.replace(/\*([^\*]+?)\*/g, '$1')
-      // 3. 将行首的 * 或 - 列表标记替换为圆点
+      // 4. 将行首的 * 或 - 列表标记替换为圆点
       formatted = formatted.replace(/^(\s*)[\*\-]\s+/gm, '$1• ')
-      // 4. 移除连续星号或减号分隔线
+      // 5. 移除连续星号或减号分隔线
       formatted = formatted.replace(/[\*\-]{3,}/g, '')
+      // 6. 去除残留的 # 和 *
+      formatted = formatted.replace(/#/g, '').replace(/\*/g, '')
       return formatted
     },
     
@@ -310,10 +314,6 @@ export default {
           }, 1000)
         }
       })
-    },
-    
-    showVoiceInput() {
-      uni.showToast({ title: '语音功能开发中', icon: 'none' })
     },
     
     async clearHistory() {

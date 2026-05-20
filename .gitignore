@@ -1,0 +1,39 @@
+# 环境变量（含API密钥）
+.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# 大文件/模型文件（超过100MB）
+*.pth
+*.onnx
+*.pt
+weights/
+weights_simplified/
+weights(2)/
+
+# IDE
+.vscode/
+.idea/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 上传图片目录
+picture/
+uploads/
+
+# 测试截图
+result_*.jpg
+test_*.jpg
+
+# uni-app 编译输出
+unpackage/
+node_modules/

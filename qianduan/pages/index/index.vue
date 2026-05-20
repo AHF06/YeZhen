@@ -156,6 +156,9 @@ export default {
       // 最近识别记录（从后端获取）
       recentRecords: [],
       
+      // 天气建议
+      weatherTip: '天气适宜，可进行田间作业',
+
       // 天气原始数据
       weatherRawData: null
     }
@@ -166,12 +169,12 @@ export default {
     this.calcScrollHeight()
     this.getLocationAndWeather()
     this.loadRecentRecords()
-	uni.$on('refreshRecords', () => {
-	    this.loadRecentRecords()
-	  })
-	},
-	onUnload() {
-	  uni.$off('refreshRecords')
+    uni.$on('refreshRecords', () => {
+      this.loadRecentRecords()
+    })
+  },
+  onUnload() {
+    uni.$off('refreshRecords')
   },
   
   onShow() {
@@ -286,7 +289,9 @@ export default {
         const items = result.items || []
         this.recentRecords = items.map(item => ({
           ...item,
-          thumbnail: item.annotated_image_url || item.image_url
+          image_url: request.getImageUrl(item.image_url),
+          annotated_image_url: request.getImageUrl(item.annotated_image_url),
+          thumbnail: request.getImageUrl(item.image_url)  // 首页显示原图
         }))
         
       } catch (err) {
