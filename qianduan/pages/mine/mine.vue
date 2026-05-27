@@ -230,10 +230,12 @@
       </view>
     </view>
 
-    <!-- 悬浮助手 -->
+    <!-- 悬浮助手（带动画） -->
     <view class="floating-robot" @click="openAssistant">
-      <image class="robot-image" src="/subpages/static/ai.jpg" mode="aspectFill"></image>
+      <image class="robot-image" src="/static/ai.jpg" mode="aspectFill"></image>
       <view class="breath-ring"></view>
+      <view class="float-ring ring-1"></view>
+      <view class="float-ring ring-2"></view>
     </view>
   </view>
 </template>
@@ -256,7 +258,6 @@ export default {
       
       // 统计数据
       diagnosisCount: 0,
-      cropCount: 0,
       postCount: 0,
       
       // 默认头像
@@ -276,22 +277,18 @@ export default {
       nicknameForm: { nickname: '' },
       usernameForm: { username: '' },
       phoneForm: { newPhone: '', password: '' },
-      passwordForm: { oldPassword: '', newPassword: '', confirmPassword: '' },
-      
-      // 作物列表
-      cropList: []
+      passwordForm: { oldPassword: '', newPassword: '', confirmPassword: '' }
     }
   },
   
   onLoad() {
     this.loadUserInfo()
     this.loadStatistics()
-    this.loadCrops()
   },
   
   onShow() {
     this.loadStatistics()
-	//this.loadCrops() 
+    this.loadUserInfo()
   },
   
   methods: {
@@ -310,7 +307,7 @@ export default {
             user_id: result.user_id,
             username: result.username,
             nickname: result.nickname,
-            avatar: result.avatar,
+            avatar: request.getImageUrl(result.avatar),
             phone: result.phone,
             bio: result.bio || '热爱农业，科技兴农🌱'
           }
@@ -319,7 +316,7 @@ export default {
           const storedUser = uni.getStorageSync('userInfo') || {}
           storedUser.username = result.username
           storedUser.nickname = result.nickname
-          storedUser.avatar = result.avatar
+          storedUser.avatar = request.getImageUrl(result.avatar)
           storedUser.phone = result.phone
           uni.setStorageSync('userInfo', storedUser)
           
@@ -349,7 +346,7 @@ export default {
     // ========== 统计数据 ==========
     async loadStatistics() {
       try {
-        const userId = request.getUserId()  // 获取登录用户ID
+        const userId = request.getUserId()
         
         // 获取当前用户的诊断记录数量
         const historyResult = await request.request({
@@ -416,13 +413,11 @@ export default {
           uni.showLoading({ title: '上传中...', mask: true })
           
           try {
-            // 上传图片到服务器
             const uploadResult = await request.uploadFile({
               url: '/api/upload-avatar',
               filePath: tempFilePath
             })
             
-            // 更新头像
             const userId = request.getUserId()
             await request.request({
               url: '/api/auth/update-avatar',
@@ -433,8 +428,8 @@ export default {
               }
             })
             
-            this.tempUserInfo.avatar = uploadResult.url
-            this.userInfo.avatar = uploadResult.url
+            this.tempUserInfo.avatar = request.getImageUrl(uploadResult.url)
+            this.userInfo.avatar = request.getImageUrl(uploadResult.url)
             
             uni.hideLoading()
             uni.showToast({ title: '头像更新成功', icon: 'success' })
@@ -478,7 +473,6 @@ export default {
         uni.showToast({ title: err.message || '修改失败', icon: 'error' })
       }
     },
-	
     
     // ========== 修改用户名 ==========
     changeUsername() {
@@ -597,7 +591,6 @@ export default {
         this.showPasswordModal = false
         uni.showToast({ title: '密码修改成功，请重新登录', icon: 'success' })
         
-        // 退出登录
         setTimeout(() => {
           this.handleLogout()
         }, 1500)
@@ -610,10 +603,6 @@ export default {
     // ========== 页面跳转 ==========
     goToDiagnosisRecords() {
       uni.switchTab({ url: '/pages/history/history' })
-    },
-    
-    goToCropManage() {
-      this.showCropModal = true
     },
     
     goToMyPosts() {
@@ -656,33 +645,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-/* 你的原有样式保持不变，添加以下新样式 */
-
-.form-hint {
-  font-size: 11px;
-  color: #999;
-  margin-top: 5px;
-  display: block;
-}
-
-.avatar-upload {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  
-  .avatar-preview {
-    width: 70px;
-    height: 70px;
-    border-radius: 50%;
-  }
-  
-  .upload-hint {
-    font-size: 14px;
-    color: #2c5e2a;
-  }
-}
-
-/* 其余样式保持你原有的不变 */
 .mine-page {
   min-height: 100vh;
   background: #f5f7f0;
@@ -737,9 +699,7 @@ export default {
   }
 }
 
-.menu-list {
-  padding: 20px 16px;
-}
+.menu-list { padding: 20px 16px; }
 
 .menu-group {
   background: white;
@@ -765,14 +725,8 @@ export default {
   &.logout-item .menu-label { color: #e74c3c; }
 }
 
-.version-info {
-  text-align: center;
-  padding: 20px;
-  font-size: 12px;
-  color: #bbb;
-}
+.version-info { text-align: center; padding: 20px; font-size: 12px; color: #bbb; }
 
-/* 弹窗样式 */
 .modal-mask {
   position: fixed;
   top: 0;
@@ -827,7 +781,24 @@ export default {
   .form-hint { font-size: 11px; color: #999; margin-top: 5px; display: block; }
 }
 
-/* 悬浮助手 */
+.avatar-upload {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  
+  .avatar-preview {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+  }
+  
+  .upload-hint {
+    font-size: 14px;
+    color: #2c5e2a;
+  }
+}
+
+/* 悬浮助手（带动画） */
 .floating-robot {
   position: fixed;
   bottom: 70px;
@@ -835,19 +806,66 @@ export default {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: white;
-  border: 2px solid #fff2cf;
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
   z-index: 999;
-  .robot-image { width: 100%; height: 100%; object-fit: cover; }
-  .breath-ring {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: rgba(247,205,92,0.4);
-    animation: breathe 2s infinite;
-    z-index: -1;
+  cursor: pointer;
+  overflow: hidden;
+  background: #ffffff;
+  border: 2px solid #fff2cf;
+  animation: robotFloat 2.5s ease-in-out infinite;
+}
+
+@keyframes robotFloat {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+  100% { transform: translateY(0px); }
+}
+
+.robot-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.breath-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(247, 205, 92, 0.4);
+  animation: breathe 2s infinite;
+  z-index: -1;
+}
+
+.float-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid rgba(247, 205, 92, 0.6);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ring-1 {
+  animation: floatRing 2s ease-out infinite;
+}
+
+.ring-2 {
+  animation: floatRing 2s ease-out infinite 0.6s;
+}
+
+@keyframes floatRing {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
   }
 }
 
@@ -855,5 +873,10 @@ export default {
   0% { transform: scale(1); opacity: 0.6; }
   50% { transform: scale(1.28); opacity: 0.2; }
   100% { transform: scale(1); opacity: 0.6; }
+}
+
+.floating-robot:active {
+  transform: scale(0.92);
+  animation: none;
 }
 </style>

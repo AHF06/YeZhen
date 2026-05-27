@@ -8,33 +8,44 @@
         
         <!-- Hero 区域（使用 first.jpg 作为背景） -->
         <view class="hero-section" :style="{ backgroundImage: 'url(' + heroBgImage + ')' }">
-          <view class="hero-overlay"></view>
+          <view class="hero-overlay" style="background: rgba(80, 120, 60, 0.35);"></view>
           <view class="hero-content">
             <view class="welcome-title">{{ greetingText }}</view>
             <view class="welcome-sub">病虫害识别助手 · 守护每一寸农田</view>
             
-            <!-- 天气和定位 + 宏观预警入口 -->
+            <!-- 天气和定位 + 宏观预警入口（两个并列卡片） -->
             <view class="insight-row">
+              <!-- 天气卡片 -->
               <view class="insight-card weather-card" @click="showWeatherDetail">
                 <view class="weather-icon-large">{{ weatherIcon }}</view>
                 <view class="weather-temp-large">{{ weatherTemp }}°C</view>
                 <view class="weather-desc-large">{{ weatherDesc }}</view>
                 <view class="weather-location-large">📍 {{ currentLocation }}</view>
               </view>
-              <view class="insight-card" @click="handleMacroWarning">
-                <text class="insight-icon">⚠️</text>
-                <text class="insight-label">宏观预警</text>
-                <text class="insight-desc">区域病虫害动态</text>
+              
+              <!-- 宏观预警卡片（简化版） -->
+              <view class="insight-card warning-card-simple" @click="handleMacroWarning">
+                <view class="warning-icon-new">⚠️</view>
+                <view class="warning-title-new">宏观预警</view>
+                <view class="warning-spacer"></view>
+                <view class="warning-desc-new">点击查看区域病虫害动态 →</view>
               </view>
             </view>
           </view>
         </view>
 
-        <!-- 核心功能区 C位：拍照识别按钮（浅绿渐变色 + 图片） -->
+        <!-- 核心功能区：拍照识别按钮（带动画） -->
         <view class="camera-section">
-          <view class="giant-camera-btn" @click="openCamera">
-            <image class="camera-btn-image" src="/static/picture.jpg" mode="aspectFill"></image>
-            <text class="camera-text">拍照识别病害</text>
+          <view class="camera-btn-wrapper" @click="openCamera">
+            <view class="giant-camera-btn">
+              <view class="camera-glow"></view>
+              <view class="camera-pulse"></view>
+              <view class="camera-inner">
+                <image class="camera-icon-img" src="/static/xiangji.png" mode="aspectFit"></image>
+                <text class="camera-text">拍照识别病害</text>
+                <text class="camera-sub">AI智能诊断 · 秒级响应</text>
+              </view>
+            </view>
           </view>
         </view>
 		
@@ -66,12 +77,13 @@
           </view>
         </view>
       </scroll-view>
-	  
 
-      <!-- 悬浮助手（使用 ai.jpg 图片） -->
+      <!-- 悬浮助手（带动画） -->
       <view class="floating-robot" @click="openAssistant">
         <image class="robot-image" src="/subpages/static/ai.jpg" mode="aspectFill"></image>
         <view class="breath-ring"></view>
+        <view class="float-ring ring-1"></view>
+        <view class="float-ring ring-2"></view>
       </view>
     </view>
 
@@ -173,6 +185,7 @@ export default {
       this.loadRecentRecords()
     })
   },
+  
   onUnload() {
     uni.$off('refreshRecords')
   },
@@ -180,17 +193,14 @@ export default {
   onShow() {
     this.checkLoginStatus()
     this.checkSyncData()
-    // 每次显示时刷新最近记录
     this.loadRecentRecords()
   },
   
   methods: {
     checkLoginStatus() {
-      // 统一使用 'userInfo' 这个 key
       const userInfo = uni.getStorageSync('userInfo')
       const isLogin = uni.getStorageSync('is_login')
       
-      // 未登录：跳转登录页（放开注释）
       if (!isLogin || !userInfo) {
         setTimeout(() => {
           uni.navigateTo({ url: '/subpages/login/login' })
@@ -207,7 +217,6 @@ export default {
           this.fetchWeatherFromAPI(res.latitude, res.longitude)
         },
         fail: () => {
-          // 默认武汉坐标
           this.fetchWeatherFromAPI(30.5, 114.3)
         }
       })
@@ -227,12 +236,10 @@ export default {
         this.weatherTemp = parseInt(result.temperature) || 22
         this.weatherHumidity = parseInt(result.humidity) || 65
         
-        // 根据天气设置图标
         this.weatherIcon = this.getWeatherIcon(result.weather)
         
       } catch (err) {
         console.error('获取天气失败', err)
-        // 使用默认天气数据
         this.useDefaultWeather()
       }
     },
@@ -274,12 +281,12 @@ export default {
     // ========== 最近识别记录（调用后端API） ==========
     async loadRecentRecords() {
       try {
-        const userId = request.getUserId()  // 获取登录用户ID
+        const userId = request.getUserId()
         
         const result = await request.request({
           url: '/api/history/list',
           data: { 
-            user_id: userId,  // 只查询当前用户的记录
+            user_id: userId,
             page: 1, 
             page_size: 3 
           },
@@ -291,7 +298,7 @@ export default {
           ...item,
           image_url: request.getImageUrl(item.image_url),
           annotated_image_url: request.getImageUrl(item.annotated_image_url),
-          thumbnail: request.getImageUrl(item.image_url)  // 首页显示原图
+          thumbnail: request.getImageUrl(item.image_url)
         }))
         
       } catch (err) {
@@ -328,7 +335,6 @@ export default {
     },
     
     loadSyncData() {
-      // 保持原有同步逻辑
       const syncList = uni.getStorageSync('sync_diseases') || []
       if (syncList.length > 0) {
         const syncRecords = syncList.slice(0, 3).map(item => ({
@@ -376,7 +382,6 @@ export default {
         return
       }
       
-      // 获取作物类型（让用户选择）
       const cropResult = await this.showCropPicker()
       if (!cropResult) return
       
@@ -388,11 +393,9 @@ export default {
           uni.showLoading({ title: '识别中...', mask: true })
           
           try {
-            // 获取位置
             const location = await this.getCurrentLocation()
             const userId = request.getUserId()
             
-            // 调用后端识别API
             const result = await request.uploadFile({
               url: '/api/upload',
               filePath: tempFilePath,
@@ -406,12 +409,10 @@ export default {
             
             uni.hideLoading()
             
-            // 跳转到结果页
             uni.navigateTo({
               url: `/subpages/result/result?id=${result.record_id}`
             })
             uni.$emit('refreshRecords')
-            // 刷新最近记录
             this.loadRecentRecords()
             
           } catch (err) {
@@ -486,7 +487,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-/* 你的原有样式保持不变 */
 .page-container {
   position: relative;
   width: 100%;
@@ -494,7 +494,6 @@ export default {
   overflow: hidden;
 }
 
-/* 整体背景图片 */
 .background-image {
   position: fixed;
   top: 0;
@@ -534,8 +533,8 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(30, 45, 20, 0.45);
-  backdrop-filter: brightness(0.92);
+  background: rgba(80, 120, 60, 0.35);
+  backdrop-filter: brightness(0.95);
   z-index: 1;
 }
 
@@ -543,8 +542,8 @@ export default {
   position: relative;
   z-index: 2;
   padding: 40px 24px 32px 24px;
-  color: #ffffff;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  color: #e8f5e9;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .welcome-title {
@@ -552,14 +551,17 @@ export default {
   font-weight: 700;
   letter-spacing: -0.3px;
   line-height: 1.2;
+  color: #e8f5e9;
 }
 
 .welcome-sub {
   font-size: 0.9rem;
   opacity: 0.92;
   margin-top: 6px;
+  color: #c8e6c9;
 }
 
+/* 两个并列卡片 */
 .insight-row {
   display: flex;
   gap: 16px;
@@ -582,6 +584,7 @@ export default {
   transform: scale(0.96);
 }
 
+/* 天气卡片 */
 .weather-card {
   text-align: center;
   padding: 10px;
@@ -613,71 +616,242 @@ export default {
   margin-top: 4px;
 }
 
-.insight-icon {
-  font-size: 28px;
-  display: block;
+/* 宏观预警卡片（简化版） */
+.warning-card-simple {
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
 }
 
-.insight-label {
+.warning-icon-new {
+  font-size: 36px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.warning-title-new {
   font-weight: 700;
   font-size: 0.9rem;
   color: #2c5e2a;
-  margin-top: 4px;
+  margin-bottom: 8px;
 }
 
-.insight-desc {
-  font-size: 0.65rem;
+.warning-spacer {
+  flex: 1;
+}
+
+.warning-desc-new {
+  font-size: 10px;
   color: #5a7048;
-  margin-top: 2px;
 }
 
+/* ========== 拍照按钮（带动画） ========== */
 .camera-section {
   display: flex;
   justify-content: center;
   margin: 8px 0 12px;
 }
 
+.camera-btn-wrapper {
+  width: 200px;
+  height: 200px;
+  cursor: pointer;
+}
+
 .giant-camera-btn {
-  width: 170px;
-  height: 170px;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
-  background: linear-gradient(145deg, #d4f5d4, #b8e8b8, #9ed89e);
+  background: linear-gradient(145deg, #ffffff, #a4ffa7);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 20px 30px rgba(0, 0, 0, 0.2), 0 4px 10px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
-  border: 3px solid #fffae6;
-  cursor: pointer;
+  box-shadow: 0 20px 35px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(76, 175, 80, 0.2);
+  transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
   position: relative;
   overflow: hidden;
+  animation: buttonFloat 3s ease-in-out infinite;
 }
 
-.camera-btn-image {
-  width: 70px;
-  height: 70px;
+@keyframes buttonFloat {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+  100% { transform: translateY(0px); }
+}
+
+.giant-camera-btn::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(76, 175, 80, 0.15) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.camera-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   border-radius: 50%;
-  object-fit: cover;
-  margin-bottom: 8px;
-  border: 2px solid white;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.8), transparent 60%);
+  pointer-events: none;
+  animation: glowPulse 2s ease-in-out infinite;
 }
 
-.giant-camera-btn:active {
-  transform: scale(0.94);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+@keyframes glowPulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+.camera-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(76, 175, 80, 0.3);
+  transform: translate(-50%, -50%) scale(1);
+  animation: pulseRing 1.5s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes pulseRing {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.3);
+    opacity: 0;
+  }
+}
+
+.camera-inner {
+  text-align: center;
+  z-index: 1;
+}
+
+.camera-icon-img {
+  width: 50px;
+  height: 50px;
+  display: block;
+  margin: 0 auto 8px;
+  animation: iconBounce 2s ease-in-out infinite;
+}
+
+@keyframes iconBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 }
 
 .camera-text {
-  font-size: 0.85rem;
+  font-size: 16px;
   font-weight: 700;
-  background: rgba(255, 255, 255, 0.9);
-  color: #2a6e2a;
-  padding: 4px 12px;
-  border-radius: 40px;
-  margin-top: 4px;
+  color: #2c5e2a;
+  display: block;
   letter-spacing: 1px;
+}
+
+.camera-sub {
+  font-size: 10px;
+  color: #8a9a7a;
+  display: block;
+  margin-top: 6px;
+}
+
+.giant-camera-btn:active {
+  transform: scale(0.96);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  animation: none;
+}
+
+/* ========== AI悬浮按钮（带动画） ========== */
+.floating-robot {
+  position: fixed;
+  bottom: 70px;
+  right: 18px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+  z-index: 999;
+  cursor: pointer;
+  overflow: hidden;
+  background: #ffffff;
+  border: 2px solid #fff2cf;
+  animation: robotFloat 2.5s ease-in-out infinite;
+}
+
+@keyframes robotFloat {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+  100% { transform: translateY(0px); }
+}
+
+.robot-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.breath-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(247, 205, 92, 0.4);
+  animation: breathe 2s infinite;
+  z-index: -1;
+}
+
+.float-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid rgba(247, 205, 92, 0.6);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ring-1 {
+  animation: floatRing 2s ease-out infinite;
+}
+
+.ring-2 {
+  animation: floatRing 2s ease-out infinite 0.6s;
+}
+
+@keyframes floatRing {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes breathe {
+  0% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.28); opacity: 0.2; }
+  100% { transform: scale(1); opacity: 0.6; }
+}
+
+.floating-robot:active {
+  transform: scale(0.92);
+  animation: none;
 }
 
 .quick-tip {
@@ -781,51 +955,7 @@ export default {
   font-size: 0.8rem;
 }
 
-.floating-robot {
-  position: fixed;
-  bottom: 70px;
-  right: 18px;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
-  z-index: 999;
-  cursor: pointer;
-  overflow: hidden;
-  background: #ffffff;
-  border: 2px solid #fff2cf;
-}
-
-.robot-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.breath-ring {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: rgba(247, 205, 92, 0.4);
-  animation: breathe 2s infinite;
-  z-index: -1;
-}
-
-@keyframes breathe {
-  0% { transform: scale(1); opacity: 0.6; }
-  50% { transform: scale(1.28); opacity: 0.2; }
-  100% { transform: scale(1); opacity: 0.6; }
-}
-
-.floating-robot:active {
-  transform: scale(0.92);
-}
-
-/* 全屏天气弹窗 - 优化间距 */
+/* 天气弹窗样式 */
 .weather-modal {
   position: fixed;
   top: 0;
@@ -877,7 +1007,6 @@ export default {
   overflow-y: auto;
 }
 
-/* 🌟 主天气区域 - 增加呼吸空间 */
 .weather-main {
   display: flex;
   align-items: center;
@@ -906,32 +1035,27 @@ export default {
   text-align: center;
 }
 
-/* 🌟 详情列表 - 更宽松的布局 */
 .weather-detail-list {
   margin-bottom: 32px;
 }
 
 .detail-item {
   display: flex;
-  justify-content: flex-start;  // 改为左对齐
+  justify-content: flex-start;
   align-items: baseline;
   padding: 16px 0;
   border-bottom: 1px solid #f0f0e8;
-  // 删除 gap
 }
 
 .detail-label {
-  min-width: 80px;   // 保证标签宽度一致
-  flex-shrink: 0;    // 防止被压缩
+  min-width: 80px;
+  flex-shrink: 0;
 }
 
 .detail-value {
-  margin-left: 160px; // 想间隔多少就调这里
-  //flex: 1;           // 让数值占据剩余空间，自动靠右（可选）
-  //text-align: right; // 数值右对齐
+  margin-left: 160px;
 }
 
-/* 🌟 天气建议卡片 */
 .weather-tip {
   display: flex;
   gap: 14px;
@@ -952,7 +1076,6 @@ export default {
   line-height: 1.5;
 }
 
-/* 🌟 底部刷新按钮 */
 .modal-footer {
   padding: 20px 24px 32px;
   border-top: 1px solid #f0f0e8;
@@ -969,25 +1092,5 @@ export default {
   font-weight: 600;
   font-size: 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-/* 小屏幕微调 */
-@media (max-width: 375px) {
-  .modal-body {
-    padding: 20px 16px 28px;
-  }
-  .detail-label {
-    font-size: 15px;
-    min-width: 70px;
-  }
-  .detail-value {
-    font-size: 15px;
-  }
-  .weather-main-temp {
-    font-size: 40px;
-  }
-  .weather-main-icon {
-    font-size: 64px;
-  }
 }
 </style>

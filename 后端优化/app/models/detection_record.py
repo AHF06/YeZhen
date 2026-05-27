@@ -15,6 +15,7 @@ class DetectionRecord(BaseModel):
     bbox_info = db.Column(db.Text, nullable=True)
     weather_info = db.Column(db.Text, nullable=True)
     ai_advice = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), nullable=False, default='待防治')
     
     def to_dict(self, base_url=''):
         """转换为字典，供API返回"""

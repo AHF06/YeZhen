@@ -138,6 +138,31 @@ class HistoryService:
         }
 
 
+    def update_status(self, record_id, user_id, status):
+        """
+        更新记录的防治状态
+
+        参数:
+            record_id: 记录ID
+            user_id: 用户ID（用于权限验证）
+            status: 新状态（'已防治' 或 '待防治'）
+
+        返回:
+            (success, message)
+        """
+        record = DetectionRecord.query.filter_by(id=record_id, user_id=user_id).first()
+
+        if not record:
+            return False, '记录不存在或无权操作'
+
+        try:
+            record.status = status
+            db.session.commit()
+            return True, '状态更新成功'
+        except Exception as e:
+            db.session.rollback()
+            return False, f'更新失败: {str(e)}'
+
 # 单例
 _history_service = None
 

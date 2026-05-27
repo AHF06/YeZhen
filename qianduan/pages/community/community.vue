@@ -135,12 +135,11 @@
         
         <scroll-view class="comment-list" scroll-y>
           <view v-for="(comment, idx) in currentComments" :key="idx" class="comment-item">
-            <view class="comment-item">
+            <view class="comment-left">
               <text class="comment-user">{{ comment.username || '用户' + comment.user_id }}：</text>
               <text class="comment-text">{{ comment.content }}</text>
               <text class="comment-time">{{ comment.created_at || '' }}</text>
             </view>
-            <!-- 只有自己的评论才显示删除按钮 -->
             <view v-if="comment.user_id === currentUserId" class="comment-delete" @click.stop="deleteComment(comment.id, idx)">
               <text>🗑️</text>
             </view>
@@ -168,7 +167,7 @@
 
     <!-- 悬浮助手 -->
     <view class="floating-robot" @click="openAssistant">
-      <image class="robot-image" src="/subpages/static/ai.jpg" mode="aspectFill"></image>
+      <image class="robot-image" src="/static/ai.jpg" mode="aspectFill"></image>
       <view class="breath-ring"></view>
     </view>
   </view>
@@ -208,11 +207,11 @@ export default {
       // 默认头像
       defaultAvatar: 'https://picsum.photos/id/64/100/100',
       currentUserId: 0
-	}
+    }
   },
   
   onLoad() {
-	this.currentUserId = request.getUserId()
+    this.currentUserId = request.getUserId()
     this.loadPosts()
   },
   
@@ -223,8 +222,7 @@ export default {
   },
   
   onShow() {
-    // 每次显示时刷新列表（可能有新发布）
-	this.currentUserId = request.getUserId()
+    this.currentUserId = request.getUserId()
     if (this.allPosts.length > 0) {
       this.refreshPosts()
     }
@@ -270,7 +268,6 @@ export default {
         
       } catch (err) {
         console.error('加载帖子失败', err)
-        // 如果后端失败，使用本地模拟数据
         if (!isLoadMore && this.allPosts.length === 0) {
           this.generateMockPosts()
         }
@@ -281,19 +278,18 @@ export default {
     
     formatPost(item) {
       let images = []
-        if (item.images) {
-          try {
-            if (typeof item.images === 'string') {
-              images = JSON.parse(item.images)
-            } else if (Array.isArray(item.images)) {
-              images = item.images
-            }
-          } catch (e) {
-            images = []
+      if (item.images) {
+        try {
+          if (typeof item.images === 'string') {
+            images = JSON.parse(item.images)
+          } else if (Array.isArray(item.images)) {
+            images = item.images
           }
+        } catch (e) {
+          images = []
         }
-        // 转换图片 URL 为完整路径
-        images = images.map(img => request.getImageUrl(img))
+      }
+      images = images.map(img => request.getImageUrl(img))
 
       return {
         id: item.id,
@@ -308,7 +304,7 @@ export default {
         like_count: item.like_count || 0,
         comment_count: item.comment_count || 0,
         is_liked: item.is_liked || false,
-        created_at: item.created_at,
+        created_at: this.formatTime(item.created_at),
         location: item.location
       }
     },
@@ -326,11 +322,12 @@ export default {
     },
     
     generateMockPosts() {
-      // 模拟数据（备用）
       const mockPosts = [
         {
           id: 1,
           user_id: 1,
+          username: '农技小能手',
+          avatar: this.defaultAvatar,
           type: 'experience',
           content: '水稻稻瘟病防治经验分享：发现病斑及时喷施三环唑，间隔7天再喷一次，效果很好！',
           crop_type: '水稻',
@@ -339,11 +336,13 @@ export default {
           like_count: 45,
           comment_count: 12,
           is_liked: false,
-          created_at: new Date().toISOString()
+          created_at: '2小时前'
         },
         {
           id: 2,
           user_id: 2,
+          username: '草莓种植户',
+          avatar: this.defaultAvatar,
           type: 'question',
           content: '求助！番茄叶片卷曲发黄，背面有白色小虫，这是什么病害？',
           crop_type: '番茄',
@@ -352,57 +351,12 @@ export default {
           like_count: 18,
           comment_count: 7,
           is_liked: false,
-          created_at: new Date(Date.now() - 3600000).toISOString()
+          created_at: '昨天'
         }
       ]
       this.allPosts = mockPosts
     },
     
-	// 添加删除评论方法
-	async deleteComment(commentId, index) {
-	  console.log('删除评论 - 真实commentId:', commentId)
-	  
-	  // 检查是否是有效的ID（正常的ID应该比较小，比如小于10000）
-	  if (commentId > 1000000) {
-	    uni.showToast({ title: '该评论数据异常，无法删除', icon: 'none' })
-	    return
-	  }
-	  
-	  uni.showModal({
-	    title: '确认删除',
-	    content: '删除后无法恢复',
-	    success: async (res) => {
-	      if (res.confirm) {
-	        try {
-	          const userId = request.getUserId()
-	          
-	          const result = await request.request({
-	            url: `/api/social/comment/${commentId}`,
-	            method: 'DELETE',
-	            data: { user_id: userId }
-	          })
-	          
-	          console.log('删除成功:', result)
-	          
-	          // 从列表中移除
-	          this.currentComments.splice(index, 1)
-	          
-	          // 更新帖子评论数
-	          if (this.currentPost && this.currentPost.comment_count > 0) {
-	            this.currentPost.comment_count--
-	          }
-	          
-	          uni.showToast({ title: '删除成功', icon: 'success' })
-	          
-	        } catch (err) {
-	          console.error('删除失败:', err)
-	          uni.showToast({ title: err.message || '删除失败', icon: 'error' })
-	        }
-	      }
-	    }
-	  })
-	},
-	
     async refreshPosts() {
       this.page = 1
       this.hasMore = true
@@ -425,7 +379,6 @@ export default {
       try {
         const userId = request.getUserId()
         
-        // 上传图片
         const uploadedImages = []
         for (const imgPath of this.uploadImages) {
           try {
@@ -436,13 +389,9 @@ export default {
               filePath: imgPath
             })
             
-            console.log('上传结果:', uploadResult)
-            
-            
             if (uploadResult && uploadResult.url) {
-              uploadedImages.push(uploadResult.url)  // 直接保存完整URL
-                console.log('保存的URL:', uploadResult.url)
-            } 
+              uploadedImages.push(uploadResult.url)
+            }
             
           } catch (err) {
             console.error('图片上传失败', err)
@@ -452,32 +401,24 @@ export default {
         
         uni.hideLoading()
         
-        console.log('准备发布的图片路径:', uploadedImages)
-        
-        // 发布帖子
         const result = await request.request({
           url: '/api/social/post',
           method: 'POST',
           data: {
             user_id: userId,
             content: this.publishContent,
-            images: uploadedImages,  // 确保这里传入了图片路径数组
+            images: uploadedImages,
             crop_type: this.selectedTopic || null,
             disease_name: this.publishType === 'question' ? this.selectedTopic : null,
             location: null
           }
         })
         
-        console.log('发布结果:', result)
-        
-        // 清空表单
         this.publishContent = ''
         this.uploadImages = []
         this.selectedTopic = ''
         
         uni.showToast({ title: '发布成功', icon: 'success' })
-        
-        // 刷新列表
         await this.refreshPosts()
         
       } catch (err) {
@@ -501,8 +442,6 @@ export default {
     
     // ========== 点赞/评论 ==========
     async toggleComment(post) {
-      console.log('打开评论弹窗，帖子ID:', post?.id)
-      
       if (!post || !post.id) {
         uni.showToast({ title: '帖子信息错误', icon: 'none' })
         return
@@ -512,7 +451,6 @@ export default {
       this.commentInput = ''
       this.showCommentModal = true
       
-      // 加载评论列表
       try {
         const result = await request.request({
           url: `/api/social/comments/${post.id}`,
@@ -521,7 +459,10 @@ export default {
         })
         
         if (result && result.items && Array.isArray(result.items)) {
-          this.currentComments = result.items
+          this.currentComments = result.items.map(item => ({
+            ...item,
+            created_at: this.formatTime(item.created_at)
+          }))
         } else {
           this.currentComments = []
         }
@@ -529,48 +470,42 @@ export default {
       } catch (err) {
         console.error('加载评论失败', err)
         this.currentComments = []
-        // 不显示错误提示，静默失败
       }
     },
-	
-	async toggleLike(post) {
-	    console.log('点赞方法被调用', post)
-	    
-	    try {
-	      const userId = request.getUserId()
-	      
-	      if (!userId || userId === 0) {
-	        uni.showToast({ title: '请先登录', icon: 'none' })
-	        return
-	      }
-	      
-	      const url = post.is_liked ? '/api/social/unlike' : '/api/social/like'
-	      
-	      const result = await request.request({
-	        url: url,
-	        method: 'POST',
-	        data: {
-	          post_id: post.id,
-	          user_id: userId
-	        }
-	      })
-	      
-	      console.log('点赞操作成功', result)
-	      
-	      // 更新本地状态
-	      post.is_liked = !post.is_liked
-	      post.like_count += post.is_liked ? 1 : -1
-	      
-	      uni.showToast({ 
-	        title: post.is_liked ? '点赞成功' : '取消点赞', 
-	        icon: 'none' 
-	      })
-	      
-	    } catch (err) {
-	      console.error('点赞失败', err)
-	      uni.showToast({ title: '操作失败', icon: 'error' })
-	    }
-	  },
+    
+    async toggleLike(post) {
+      try {
+        const userId = request.getUserId()
+        
+        if (!userId || userId === 0) {
+          uni.showToast({ title: '请先登录', icon: 'none' })
+          return
+        }
+        
+        const url = post.is_liked ? '/api/social/unlike' : '/api/social/like'
+        
+        await request.request({
+          url: url,
+          method: 'POST',
+          data: {
+            post_id: post.id,
+            user_id: userId
+          }
+        })
+        
+        post.is_liked = !post.is_liked
+        post.like_count += post.is_liked ? 1 : -1
+        
+        uni.showToast({ 
+          title: post.is_liked ? '点赞成功' : '取消点赞', 
+          icon: 'none' 
+        })
+        
+      } catch (err) {
+        console.error('点赞失败', err)
+        uni.showToast({ title: '操作失败', icon: 'error' })
+      }
+    },
     
     async sendComment() {
       if (!this.commentInput.trim()) {
@@ -587,7 +522,6 @@ export default {
       try {
         const userId = request.getUserId()
         
-        // 发送评论，后端会返回新评论的ID
         const result = await request.request({
           url: '/api/social/comment',
           method: 'POST',
@@ -598,20 +532,16 @@ export default {
           }
         })
         
-        console.log('评论成功，返回结果:', result)
-        
-        // 使用后端返回的真实ID
         const newComment = {
-          id: result.comment_id,  // 使用后端返回的真实ID
+          id: result.comment_id,
           user_id: userId,
+          username: '我',
           content: this.commentInput,
-          created_at: new Date().toLocaleString()
+          created_at: '刚刚'
         }
         
-        // 添加到本地列表
         this.currentComments.unshift(newComment)
         
-        // 更新帖子评论数
         if (this.currentPost.comment_count !== undefined) {
           this.currentPost.comment_count++
         }
@@ -625,9 +555,44 @@ export default {
       }
     },
     
-    // 修改 closeCommentModal 方法，添加延迟
+    async deleteComment(commentId, index) {
+      if (commentId > 1000000) {
+        uni.showToast({ title: '该评论数据异常，无法删除', icon: 'none' })
+        return
+      }
+      
+      uni.showModal({
+        title: '确认删除',
+        content: '删除后无法恢复',
+        success: async (res) => {
+          if (res.confirm) {
+            try {
+              const userId = request.getUserId()
+              
+              await request.request({
+                url: `/api/social/comment/${commentId}`,
+                method: 'DELETE',
+                data: { user_id: userId }
+              })
+              
+              this.currentComments.splice(index, 1)
+              
+              if (this.currentPost && this.currentPost.comment_count > 0) {
+                this.currentPost.comment_count--
+              }
+              
+              uni.showToast({ title: '删除成功', icon: 'success' })
+              
+            } catch (err) {
+              console.error('删除失败:', err)
+              uni.showToast({ title: err.message || '删除失败', icon: 'error' })
+            }
+          }
+        }
+      })
+    },
+    
     closeCommentModal() {
-      // 如果正在输入，不关闭
       if (this.commentInput && this.commentInput.trim()) {
         return
       }
@@ -637,12 +602,6 @@ export default {
         this.currentComments = []
         this.commentInput = ''
       }, 200)
-    },
-    
-    // 添加输入框聚焦方法
-    onInputFocus() {
-      // 确保弹窗不会关闭
-      this.showCommentModal = true
     },
     
     meetToo(post) {
@@ -669,10 +628,6 @@ export default {
               icon: 'success',
               duration: 2000
             })
-            
-            setTimeout(() => {
-              uni.switchTab({ url: '/pages/index/index' })
-            }, 1500)
           }
         }
       })
@@ -698,7 +653,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-/* 你的原有样式保持不变 */
 .community-page {
   min-height: 100vh;
   background: #f5f7f0;
@@ -706,7 +660,6 @@ export default {
   position: relative;
 }
 
-/* 发布栏样式 */
 .publish-bar {
   background: white;
   margin: 12px;
@@ -735,14 +688,8 @@ export default {
   color: #6b7c5e;
   transition: all 0.2s;
   
-  .tab-icon {
-    font-size: 18px;
-  }
-  
-  &.active {
-    background: #2c5e2a;
-    color: white;
-  }
+  .tab-icon { font-size: 18px; }
+  &.active { background: #2c5e2a; color: white; }
 }
 
 .topic-selector {
@@ -815,13 +762,7 @@ export default {
   position: relative;
   width: 70px;
   height: 70px;
-  
-  .preview-img {
-    width: 100%;
-    height: 100%;
-    border-radius: 12px;
-  }
-  
+  .preview-img { width: 100%; height: 100%; border-radius: 12px; }
   .remove-img {
     position: absolute;
     top: -8px;
@@ -838,7 +779,6 @@ export default {
   }
 }
 
-/* 单列帖子列表 */
 .post-list {
   display: flex;
   flex-direction: column;
@@ -852,19 +792,11 @@ export default {
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   transition: transform 0.2s;
-  
-  &:active {
-    transform: scale(0.98);
-  }
+  &:active { transform: scale(0.98); }
 }
 
-.experience-card {
-  border-left: 4px solid #4caf50;
-}
-
-.question-card {
-  border-left: 4px solid #ff9800;
-}
+.experience-card { border-left: 4px solid #4caf50; }
+.question-card { border-left: 4px solid #ff9800; }
 
 .card-header {
   display: flex;
@@ -877,27 +809,12 @@ export default {
   display: flex;
   gap: 10px;
   align-items: center;
-  
-  .avatar {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-  }
-  
+  .avatar { width: 44px; height: 44px; border-radius: 50%; }
   .user-detail {
     display: flex;
     flex-direction: column;
-    
-    .username {
-      font-weight: 600;
-      font-size: 15px;
-      color: #333;
-    }
-    
-    .time {
-      font-size: 11px;
-      color: #999;
-    }
+    .username { font-weight: 600; font-size: 15px; color: #333; }
+    .time { font-size: 11px; color: #999; }
   }
 }
 
@@ -907,30 +824,12 @@ export default {
   font-size: 11px;
   font-weight: 500;
 }
-
-.experience-badge {
-  background: #e8f5e9;
-  color: #2e7d32;
-}
-
-.question-badge {
-  background: #fff3e0;
-  color: #ef6c00;
-}
+.experience-badge { background: #e8f5e9; color: #2e7d32; }
+.question-badge { background: #fff3e0; color: #ef6c00; }
 
 .card-content {
-  .content-text {
-    font-size: 15px;
-    line-height: 1.5;
-    color: #333;
-  }
-  
-  .content-image {
-    width: 100%;
-    max-height: 240px;
-    border-radius: 12px;
-    margin-top: 12px;
-  }
+  .content-text { font-size: 15px; line-height: 1.5; color: #333; }
+  .content-image { width: 100%; max-height: 240px; border-radius: 12px; margin-top: 12px; }
 }
 
 .question-tags {
@@ -938,14 +837,7 @@ export default {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
-  
-  .question-tag {
-    font-size: 11px;
-    padding: 4px 12px;
-    background: #f0f3e8;
-    border-radius: 20px;
-    color: #5a6e4a;
-  }
+  .question-tag { font-size: 11px; padding: 4px 12px; background: #f0f3e8; border-radius: 20px; color: #5a6e4a; }
 }
 
 .card-footer {
@@ -965,15 +857,8 @@ export default {
   padding: 6px 16px;
   border-radius: 30px;
   background: #fafbf6;
-  
-  .action-icon {
-    font-size: 18px;
-  }
-  
-  &.meet-btn {
-    background: #eef3e6;
-    color: #2c5e2a;
-  }
+  .action-icon { font-size: 18px; }
+  &.meet-btn { background: #eef3e6; color: #2c5e2a; }
 }
 
 .load-more, .no-more {
@@ -983,7 +868,6 @@ export default {
   font-size: 12px;
 }
 
-/* 评论弹窗 */
 .comment-modal {
   position: fixed;
   top: 0;
@@ -1011,11 +895,7 @@ export default {
   padding: 16px;
   border-bottom: 1px solid #eee;
   font-weight: 600;
-  
-  .close-btn {
-    font-size: 20px;
-    cursor: pointer;
-  }
+  .close-btn { font-size: 20px; cursor: pointer; }
 }
 
 .comment-list {
@@ -1025,14 +905,21 @@ export default {
 }
 
 .comment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   padding: 10px 0;
   border-bottom: 1px solid #f0f0f0;
-  font-size: 14px;
-  
-  .comment-user {
-    font-weight: 600;
-    color: #2c5e2a;
-  }
+  .comment-left { flex: 1; }
+  .comment-user { font-weight: 600; color: #2c5e2a; margin-right: 8px; }
+  .comment-text { font-size: 14px; color: #333; }
+  .comment-time { font-size: 10px; color: #aaa; margin-left: 8px; }
+}
+
+.comment-delete {
+  padding: 4px 8px;
+  font-size: 16px;
+  color: #e74c3c;
 }
 
 .empty-comment {
@@ -1047,27 +934,11 @@ export default {
   padding: 12px;
   border-top: 1px solid #eee;
   gap: 10px;
-  background: white;  // 添加背景色
-  position: relative;  // 添加定位
-  z-index: 10;  // 确保在最上层
-  
-  .comment-input {
-    flex: 1;
-    padding: 10px;
-    background: #f5f7f0;
-    border-radius: 30px;
-    font-size: 14px;
-  }
-  
-  .send-btn {
-    padding: 10px 20px;
-    background: #2c5e2a;
-    color: white;
-    border-radius: 30px;
-  }
+  background: white;
+  .comment-input { flex: 1; padding: 10px; background: #f5f7f0; border-radius: 30px; font-size: 14px; }
+  .send-btn { padding: 10px 20px; background: #2c5e2a; color: white; border-radius: 30px; }
 }
 
-/* 悬浮助手 */
 .floating-robot {
   position: fixed;
   bottom: 70px;
@@ -1100,40 +971,6 @@ export default {
   background: rgba(247, 205, 92, 0.4);
   animation: breathe 2s infinite;
   z-index: -1;
-}
-.comment-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 10px 0;
-  border-bottom: 1px solid #f0f0f0;
-  
-  .comment-left {
-    flex: 1;
-  }
-  
-  .comment-user {
-    font-weight: 600;
-    color: #2c5e2a;
-    margin-right: 8px;
-  }
-  
-  .comment-text {
-    font-size: 14px;
-    color: #333;
-  }
-  
-  .comment-time {
-    font-size: 10px;
-    color: #aaa;
-    margin-left: 8px;
-  }
-}
-
-.comment-delete {
-  padding: 4px 8px;
-  font-size: 16px;
-  color: #e74c3c;
 }
 
 @keyframes breathe {

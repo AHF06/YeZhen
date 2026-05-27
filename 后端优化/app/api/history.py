@@ -50,9 +50,10 @@ def register_history_routes(app):
                 'detections': json.loads(record.bbox_info) if record.bbox_info else [],
                 'weather_info': json.loads(record.weather_info) if record.weather_info else {},
                 'ai_advice': record.ai_advice,
+                'status': record.status,
                 'created_at': record.created_at.strftime('%Y-%m-%d %H:%M:%S')
             })
-        
+
         return success({
             'total': result['total'],
             'page': result['page'],
@@ -97,9 +98,10 @@ def register_history_routes(app):
             'detections': json.loads(record.bbox_info) if record.bbox_info else [],
             'weather_info': json.loads(record.weather_info) if record.weather_info else {},
             'ai_advice': record.ai_advice,
+            'status': record.status,
             'created_at': record.created_at.strftime('%Y-%m-%d %H:%M:%S')
         })
-    
+
     @app.route('/api/history/delete/<int:record_id>', methods=['DELETE'])
     def delete_history_record(record_id):
         """
@@ -174,6 +176,36 @@ def register_history_routes(app):
             'fail_count': fail_count
         }, f'成功删除{success_count}条记录')
     
+    @app.route('/api/history/update-status/<int:record_id>', methods=['PUT'])
+    def update_record_status(record_id):
+        """
+        更新记录的防治状态
+        """
+        data = request.get_json()
+
+        if not data:
+            return error('请求体不能为空', 400)
+
+        user_id = data.get('user_id')
+        status = data.get('status')
+
+        if user_id is None:
+            return error('缺少用户ID', 400)
+
+        if not status:
+            return error('缺少状态值', 400)
+
+        if status not in ('已防治', '待防治'):
+            return error('状态值无效，只能是"已防治"或"待防治"', 400)
+
+        service = get_history_service()
+        success_flag, message = service.update_status(record_id, user_id, status)
+
+        if success_flag:
+            return success(None, message)
+        else:
+            return error(message, 400)
+
     @app.route('/api/history/region-stats', methods=['GET'])
     def get_region_stats():
         """

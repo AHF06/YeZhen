@@ -19,9 +19,18 @@ def register_upload_routes(app):
 
         file = request.files['file']
         user_id = request.form.get('user_id', 0, type=int)
-        crop_type = request.form.get('crop_type', 'rice')
+        crop_type_en = request.form.get('crop_type', 'rice')
         lat = request.form.get('lat')
         lon = request.form.get('lon')
+
+        # 作物名映射（英文 -> 中文）
+        CROP_NAME_MAP = {
+            'rice': '水稻',
+            'corn': '玉米',
+            'tomato': '番茄',
+            'strawberry': '草莓'
+        }
+        crop_type = CROP_NAME_MAP.get(crop_type_en, crop_type_en)
 
         # 保存文件到 picture 目录
         relative_path, absolute_path, url_path = save_upload_file(file)
@@ -30,7 +39,7 @@ def register_upload_routes(app):
 
         # 执行病害识别（YOLO）
         detection_service = DetectionService()
-        result = detection_service.recognize(absolute_path, crop_type)
+        result = detection_service.recognize(absolute_path, crop_type_en)
 
         if not result['success']:
             return error(result['error_msg'], 500)
